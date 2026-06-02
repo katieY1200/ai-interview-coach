@@ -5,6 +5,24 @@
 
 ---
 
+## 스크린샷
+
+| 온보딩 — 시작 화면 | 온보딩 — 정보 입력 |
+|:---:|:---:|
+| ![온보딩 시작](readme_image/onboarding1.png) | ![온보딩 입력](readme_image/onboarding2.png) |
+
+| 면접 진행 | 결과 분석 |
+|:---:|:---:|
+| ![면접 진행](readme_image/interview.png) | ![결과 화면](readme_image/result.png) |
+
+<p align="center">
+  <img src="readme_image/coach.png" width="480" alt="AI 코치 채팅"/>
+  <br/>
+  <em>AI 면접 코치 채팅</em>
+</p>
+
+---
+
 ## 문제 정의
 
 면접 준비의 가장 효과적인 방법은 실전처럼 반복 연습하고 피드백을 받는 것입니다.
