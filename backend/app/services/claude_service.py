@@ -1,9 +1,34 @@
-import json
+﻿import json
+import re
 import random
-from google import genai
+import traceback
+import datetime
+import pathlib
+from groq import Groq
 from app.database import settings
 
-_client = genai.Client(api_key=settings.GOOGLE_API_KEY)
+_client = Groq(api_key=settings.GROQ_API_KEY)
+MODEL = "llama-3.3-70b-versatile"
+
+_LOG = pathlib.Path("C:/ai_exam/miniProject/backend/feedback_error.log")
+
+
+def _log_error(label: str) -> None:
+    try:
+        _LOG.parent.mkdir(parents=True, exist_ok=True)
+        with open(_LOG, "a", encoding="utf-8") as f:
+            f.write(f"\n{'='*60}\n{datetime.datetime.now()} [{label}]\n")
+            f.write(f"cwd={pathlib.Path.cwd()}\n")
+            f.write(traceback.format_exc())
+    except Exception as e2:
+        # 마지막 수단: C:\temp에 저장
+        try:
+            with open("C:/temp_feedback_error.log", "a", encoding="utf-8") as f:
+                f.write(f"{datetime.datetime.now()} [{label}] log_error_failed: {e2}\n")
+                f.write(traceback.format_exc())
+        except Exception:
+            pass
+
 
 TONES = {
     "strict": (
@@ -30,23 +55,23 @@ def _company_label(company_type: str) -> str:
 
 
 def _call(prompt: str) -> str:
-    # TODO: 현재 동기 호출이라 Gemini 응답 대기 중 이벤트 루프가 블로킹됨
-    # 트래픽이 늘면 asyncio.to_thread() 또는 httpx 비동기 클라이언트로 전환 필요
-    response = _client.models.generate_content(
-        model="gemini-2.0-flash",
-        contents=prompt,
+    response = _client.chat.completions.create(
+        model=MODEL,
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.7,
     )
-    return response.text.strip()
+    return response.choices[0].message.content.strip()
 
 
 def _parse_json(text: str) -> dict:
-    """Gemini가 JSON을 마크다운 코드펜스로 감싸서 응답하는 경우도 처리."""
     text = text.strip()
-    if text.startswith("```"):
-        text = text.split("```")[1]
-        if text.startswith("json"):
-            text = text[4:]
-    return json.loads(text.strip())
+    fence = re.search(r"```(?:json)?\s*([\s\S]*?)```", text)
+    if fence:
+        return json.loads(fence.group(1).strip())
+    brace = re.search(r"\{[\s\S]*\}", text)
+    if brace:
+        return json.loads(brace.group(0))
+    return json.loads(text)
 
 
 def generate_interview_questions(
@@ -90,6 +115,7 @@ light 모드이면 personality_questions는 빈 배열로 반환하세요."""
     try:
         return _parse_json(_call(prompt))
     except Exception:
+        _log_error("generate_interview_questions")
         return None
 
 
@@ -128,6 +154,7 @@ def check_followup_needed(
     try:
         return _parse_json(_call(prompt))
     except Exception:
+        _log_error("check_followup_needed")
         return {"need_followup": False, "followup_question": None, "reason": "분석 오류"}
 
 
@@ -182,8 +209,10 @@ def generate_final_feedback(
 }}"""
 
     try:
-        return _parse_json(_call(prompt))
+        raw = _call(prompt)
+        return _parse_json(raw)
     except Exception:
+        _log_error("generate_final_feedback")
         return {
             "score": None,
             "strengths": ["분석 중 오류가 발생했습니다."],
@@ -255,4 +284,5 @@ def chat_with_coach(
     try:
         return _call(prompt)
     except Exception:
+        _log_error("chat_with_coach")
         return "죄송합니다, 잠시 오류가 발생했습니다. 다시 시도해 주세요."

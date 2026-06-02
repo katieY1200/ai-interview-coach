@@ -10,6 +10,19 @@ router = APIRouter()
 MAX_FOLLOWUP = 2  # normal mode per base question
 
 
+@router.get("/test-ai")
+def test_ai():
+    """Groq API 연결 확인용 - 브라우저에서 /api/sessions/test-ai 접속"""
+    result = claude_service.generate_final_feedback(
+        questions_and_answers=[{"question": "자기소개", "answer": "안녕하세요", "type": "cover_letter"}],
+        warnings=[],
+        company_type="large",
+        job_category="개발",
+        tone="neutral",
+    )
+    return {"ok": result.get("score") is not None, "result": result}
+
+
 # ── helpers ──────────────────────────────────────────────────────────────
 
 def _question_out(q: models.InterviewQuestion) -> schemas.QuestionOut:
@@ -248,10 +261,12 @@ def submit_answer(payload: schemas.AnswerSubmit, db: Session = Depends(get_db)):
 
 @router.post("/complete/{session_id}", response_model=schemas.SessionResult)
 def complete_session(session_id: str, db: Session = Depends(get_db)):
+    print(f"=== complete_session 호출됨: {session_id} ===", flush=True)
     session = db.query(models.InterviewSession).filter(
         models.InterviewSession.id == session_id
     ).first()
     if not session:
+        print("=== 세션 없음 ===", flush=True)
         raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다.")
 
     questions = (

@@ -4,7 +4,7 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    GOOGLE_API_KEY: str
+    GROQ_API_KEY: str
     DB_HOST: str = "localhost"
     DB_PORT: int = 3306
     DB_USER: str = "root"
